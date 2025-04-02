@@ -5,14 +5,53 @@ require('dotenv').config()
 const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // Your frontend URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    credentials: true
+}));
+
+const URL = 'http://localhost:5173';
+
+app.post('/create-checkout-session', async (req, res) => {
+    const { price } = req.body;
+    
+    // Validate price
+    if (!price || isNaN(price) || price <= 0) {
+        return res.status(400).send({ error: 'Invalid or missing price value' });
+    }
+    console.log(price);
+    try {
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'usd',
+                        unit_amount: Math.round(price * 100), // Convert to cents
+                        product_data: {
+                            name: 'Summer Camp Registration',
+                        },
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: 'payment',
+            success_url: 'http://localhost:5173/success',
+            cancel_url: 'http://localhost:5173/cancel',
+        });
+        res.json({ url: session.url });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: error.message });
+    }
+});
 
 // mongodb connection
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ekr4n.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
