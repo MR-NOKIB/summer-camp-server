@@ -534,6 +534,69 @@ app.get("/instructors", async (req, res) => {
     }
 });
 
+// Cart related endpoints
+app.get("/carts", async (req, res) => {
+    try {
+        const email = req.query.email;
+        if (!email) {
+            return res.status(400).send({ error: "Email parameter is required" });
+        }
+        
+        const db = client.db("summer-camp");
+        const cartCollection = db.collection("cart");
+        const query = { email: email };
+        const result = await cartCollection.find(query).toArray();
+        res.send(result);
+    } catch (error) {
+        console.error("Error fetching cart:", error);
+        res.status(500).send({ error: "Failed to fetch cart items" });
+    }
+});
+
+app.post("/carts", async (req, res) => {
+    try {
+        const cartClasses = req.body;
+        const db = client.db("summer-camp");
+        const cartCollection = db.collection("cart");
+        const result = await cartCollection.insertOne(cartClasses);
+        res.send(result);
+    } catch (error) {
+        console.error("Error adding to cart:", error);
+        res.status(500).send({ error: "Failed to add to cart" });
+    }
+});
+
+app.delete('/carts/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const db = client.db("summer-camp");
+        const cartCollection = db.collection("cart");
+        const query = { _id: new ObjectId(id) };
+        const result = await cartCollection.deleteOne(query);
+        res.send(result);
+    } catch (error) {
+        console.error("Error removing from cart:", error);
+        res.status(500).send({ error: "Failed to remove from cart" });
+    }
+});
+
+app.delete('/carts/clear/:email', async (req, res) => {
+    try {
+        const email = req.params.email;
+        const db = client.db("summer-camp");
+        const cartCollection = db.collection("cart");
+        const query = { email: email };
+        const result = await cartCollection.deleteMany(query);
+        res.send({ 
+            success: true, 
+            deletedCount: result.deletedCount 
+        });
+    } catch (error) {
+        console.error('Error clearing cart:', error);
+        res.status(500).send({ error: error.message });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Summer Camp Server is running on port ${port}`);
 });
